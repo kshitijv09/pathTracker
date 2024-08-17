@@ -24,3 +24,8 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 1. Mark all destinations on the map that you want to visit.
 2. Once you are done, click on Start Tracking to track your journey through these marked places.
 
+## Demo Video
+
+
+
+[demo.webm](https://github.com/user-attachments/assets/6b9b124c-9c8e-4e5e-9bde-ac0425dd9d27)
