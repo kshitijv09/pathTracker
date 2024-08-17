@@ -52,8 +52,15 @@ const MapComponent = () => {
   // Function to handle map clicks and add waypoints to the path
   const onMapClick = (event: google.maps.MapMouseEvent) => {
     if (!event.latLng) return;
-    if (path.length === 1) {
-      setVehiclePosition(path[0]); // Set initial vehicle position
+    if (path.length === 0) {
+      setVehiclePosition({ lat: userLat, lng: userLong });
+      setPath((currentPath) => [
+        ...currentPath,
+        {
+          lat: userLat,
+          lng: userLong,
+        },
+      ]);
     }
 
     setPath((currentPath) => [
@@ -94,43 +101,46 @@ const MapComponent = () => {
 
   // Effect to handle vehicle movement based on the directions
   useEffect(() => {
-    if (tracking && directions) {
-      const legs = directions.routes[0].legs;
-      const steps = legs.flatMap((leg) => leg.steps);
+    if (tracking) {
+      // Function to update vehicle position with current user location
+      const updateVehiclePosition = (position: GeolocationPosition) => {
+        const { latitude, longitude } = position.coords;
+        setVehiclePosition({ lat: latitude, lng: longitude });
 
-      if (steps.length > 0) {
-        intervalIdRef.current = setInterval(() => {
-          setStepIndex((prevIndex) => {
-            const nextIndex = prevIndex + 1;
-            if (nextIndex < steps.length) {
-              // Update vehicle position based on the next step
-              const nextPosition = {
-                lat: steps[nextIndex].end_location.lat(),
-                lng: steps[nextIndex].end_location.lng(),
-              };
-              setVehiclePosition(nextPosition);
-              return nextIndex;
-            } else {
-              // Stop tracking when all steps are completed
-              clearInterval(intervalIdRef.current!);
-              setTracking(false);
-              return prevIndex;
-            }
-          });
+        // Check if the vehicle is close to the destination
+        if (directions) {
+          const destination =
+            directions.routes[0].legs[directions.routes[0].legs.length - 1]
+              .end_location;
+          const distance =
+            google.maps.geometry.spherical.computeDistanceBetween(
+              new google.maps.LatLng(latitude, longitude),
+              destination
+            );
 
-          // Uncomment this code to update vehicle position with user's real-time location
-          /*
-          if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition((position) => {
-              const { latitude, longitude } = position.coords;
-              setVehiclePosition({ lat: latitude, lng: longitude });
-            });
+          // Stop tracking if within a certain distance of the destination (e.g., 50 meters)
+          if (distance < 50) {
+            setTracking(false);
           }
-          */
-        }, 3000);
+        }
+      };
 
-        return () => clearInterval(intervalIdRef.current!);
-      }
+      // Start a regular interval to update vehicle position
+      intervalIdRef.current = setInterval(() => {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            updateVehiclePosition,
+            (error) => {
+              console.error("Error retrieving location:", error);
+            }
+          );
+        } else {
+          console.log("Geolocation is not supported by this browser.");
+        }
+      }, 3000);
+
+      // Clear interval on cleanup
+      return () => clearInterval(intervalIdRef.current!);
     }
   }, [tracking, directions]);
 
